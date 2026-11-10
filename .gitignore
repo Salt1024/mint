@@ -1,0 +1,33 @@
+# compiled output
+dist
+node_modules
+target
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# IDEs and editors
+.VSCode
+.idea
+
+# dotenv environment variable files
+.env
+mint.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+*.local
