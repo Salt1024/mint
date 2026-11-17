@@ -12,7 +12,14 @@
 
 - 根据你的系统下载预构建包。
 
-- 创建 `mint.env`，参考 [env 示例](.env.example)，填写`ROOT_DIR`、`USERNAME`。
+- 启动服务：
+
+  ```sh
+  # chmod +x mint
+  ./mint
+  ```
+
+如需固定密码或自定义配置，可创建 `mint.env`，参考 [env 示例](.env.example)：
 
 - 生成密码哈希：
 
@@ -20,7 +27,7 @@
   ./mint --passwd your_password
   ```
 
-- 创建 `mint.env`，在`PASSWORD_HASH`填入生成的密码哈希；哈希用单引号包裹。
+- 在 `mint.env` 的 `PASSWORD_HASH` 中填入生成的密码哈希，用单引号包裹。其他配置按需填写。
 
 - 启动服务：
 
@@ -28,19 +35,17 @@
   ./mint --config ./mint.env
   ```
 
-按启动日志中的 Web 地址访问，默认本机地址为 `http://127.0.0.1:3000/`。日志同时输出用户名、根目录绝对路径和 Cookie Secure 状态。
-
 ## 配置
 
-所有配置均支持环境变量和命令行参数。
+所有参数和环境变量均为选填，配置文件也可省略。所有配置均支持环境变量和命令行参数。
 
 | 环境变量 | 命令行参数 | 说明 |
 | --- | --- | --- |
-| `ROOT_DIR` | `--root-dir` | 必填，已存在且可读取的根目录绝对路径 |
-| `USERNAME` | `--username` | 必填，登录账号 |
-| `PASSWORD_HASH` | `--password-hash` | 必填，`--passwd` 生成的 bcrypt 哈希 |
+| `ROOT_DIR` | `--root-dir` | 默认使用执行 `mint` 时的当前目录；指定时须为已存在且可读取的绝对路径 |
+| `USERNAME` | `--username` | 登录账号，默认 `mint` |
+| `PASSWORD_HASH` | `--password-hash` | `--passwd` 生成的 bcrypt 哈希；未指定时随机生成密码并在启动时打印 |
 | `HOST` | `--host` | 监听地址，默认 `0.0.0.0` |
-| `PORT` | `--port` | 端口，默认 `3000`，范围 `1–65535` |
+| `PORT` | `--port` | 端口，默认 `8001`，范围 `1–65535` |
 | `COOKIE_SECURE` | `--cookie-secure` | `true` 或 `false`，默认 `false` |
 
 优先级：命令行参数 > 环境变量 > 配置文件 > 默认值。程序不自动加载 `.env`。
@@ -77,7 +82,7 @@ cargo build --release --locked
 
 ```sh
 pnpm --dir ui build
-cargo run -- --config ./.env
+cargo run
 # 另一个终端
 pnpm --dir ui dev
 ```

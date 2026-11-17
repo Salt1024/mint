@@ -35,21 +35,23 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_env(overrides: &HashMap<&str, String>) -> Result<Self, Box<dyn std::error::Error>> {
-        let get =
-            |key: &str, default: Option<&str>| -> Result<String, Box<dyn std::error::Error>> {
-                if let Some(value) = overrides.get(key) {
-                    return Ok(value.clone());
-                }
-                match env::var(key) {
-                    Ok(value) => Ok(value),
-                    Err(env::VarError::NotPresent) => default
-                        .map(str::to_owned)
-                        .ok_or_else(|| format!("必须配置 {key}").into()),
-                    Err(_) => Err(format!("{key} 必须是有效的 UTF-8 文本").into()),
-                }
-            };
-        let root = PathBuf::from(get("ROOT_DIR", None)?);
+    pub fn from_env(
+        overrides: &HashMap<&str, String>,
+    ) -> Result<(Self, Option<String>), Box<dyn std::error::Error>> {
+        let get = |key: &str| -> Result<Option<String>, Box<dyn std::error::Error>> {
+            if let Some(value) = overrides.get(key) {
+                return Ok(Some(value.clone()));
+            }
+            match env::var(key) {
+                Ok(value) => Ok(Some(value)),
+                Err(env::VarError::NotPresent) => Ok(None),
+                Err(_) => Err(format!("{key} 必须是有效的 UTF-8 文本").into()),
+            }
+        };
+        let root = match get("ROOT_DIR")? {
+            Some(value) => PathBuf::from(value),
+            None => env::current_dir()?,
+        };
         if !root.is_absolute() {
             return Err("ROOT_DIR 必须是管理目录的绝对路径".into());
         }
@@ -59,37 +61,53 @@ impl Config {
         if !root.is_dir() || std::fs::read_dir(&root).is_err() {
             return Err("ROOT_DIR 必须指向存在且可读取的目录".into());
         }
-        let username = get("USERNAME", None)?;
+        let username = get("USERNAME")?.unwrap_or_else(|| "mint".into());
         if username.trim().is_empty() {
             return Err("USERNAME 不能为空".into());
         }
-        let password_hash = get("PASSWORD_HASH", None)?;
+        let mut generated_password = None;
+        let password_hash = match get("PASSWORD_HASH")? {
+            Some(value) => value,
+            None => {
+                let mut bytes = [0_u8; 16];
+                getrandom::fill(&mut bytes).map_err(|_| "无法生成随机密码")?;
+                let password: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+                let hash = bcrypt::hash(&password, 12)?;
+                generated_password = Some(password);
+                hash
+            }
+        };
         let hash_parts = password_hash
             .parse::<bcrypt::HashParts>()
             .map_err(|_| "PASSWORD_HASH 必须是有效的 bcrypt 哈希")?;
         if !(4..=31).contains(&hash_parts.get_cost()) {
             return Err("PASSWORD_HASH 的 cost 必须为 4 到 31".into());
         }
-        let host = get("HOST", Some("0.0.0.0"))?;
+        let host = get("HOST")?.unwrap_or_else(|| "0.0.0.0".into());
         if host.trim().is_empty() {
             return Err("HOST 不能为空".into());
         }
-        let port = get("PORT", Some("3000"))?
+        let port = get("PORT")?
+            .unwrap_or_else(|| "8001".into())
             .parse::<u16>()
             .ok()
             .filter(|port| *port > 0)
             .ok_or("PORT 必须是 1 到 65535 之间的整数")?;
-        let cookie_secure = get("COOKIE_SECURE", Some("false"))?
+        let cookie_secure = get("COOKIE_SECURE")?
+            .unwrap_or_else(|| "false".into())
             .parse::<bool>()
             .map_err(|_| "COOKIE_SECURE 必须为 true 或 false")?;
-        Ok(Self {
-            root,
-            username,
-            password_hash,
-            host,
-            port,
-            cookie_secure,
-        })
+        Ok((
+            Self {
+                root,
+                username,
+                password_hash,
+                host,
+                port,
+                cookie_secure,
+            },
+            generated_password,
+        ))
     }
 }
 

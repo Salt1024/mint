@@ -17,18 +17,19 @@ const USAGE: &str = r#"Mint 文件管理器
 参数：
   -h, --help                    显示帮助并退出，无需服务配置
   -c, --config <env文件>         加载指定配置文件，不自动加载 .env
-  --root-dir <目录>             管理根目录，必须为已存在且可读取的绝对路径（ROOT_DIR，必填）
-  --username <账号>             登录账号（USERNAME，必填）
-  --password-hash <哈希>        bcrypt 密码哈希，通过 --passwd 生成（PASSWORD_HASH，必填）
+  --root-dir <目录>             管理根目录，须为已存在且可读取的绝对路径（ROOT_DIR，默认当前目录）
+  --username <账号>             登录账号（USERNAME，默认 mint）
+  --password-hash <哈希>        bcrypt 密码哈希（PASSWORD_HASH，未指定时生成随机密码并在启动时打印）
   --host <地址>                 监听 IP 或主机名（HOST，默认 0.0.0.0）
-  --port <端口>                 监听端口，范围 1–65535（PORT，默认 3000）
+  --port <端口>                 监听端口，范围 1–65535（PORT，默认 8001）
   --cookie-secure <true|false>   设置 Cookie 的 Secure 属性，不开启 HTTPS（COOKIE_SECURE，默认 false）
   --passwd <密码>               生成 bcrypt 密码哈希并退出，须独立使用，无需服务配置
 
-必填配置可通过参数、环境变量或配置文件提供。
+所有配置均为选填，可通过参数、环境变量或配置文件提供。
 配置优先级：命令行参数 > 环境变量 > 配置文件 > 默认值。
 
 示例：
+  mint
   mint --passwd your_password
   mint --config ./mint.env
   mint -c ./mint.env --host 127.0.0.1 --port 8080"#;
@@ -92,7 +93,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             format!("无法加载配置文件 {path}：{message}")
         })?;
     }
-    let config = Config::from_env(&overrides)?;
+    let (config, generated_password) = Config::from_env(&overrides)?;
     let host = config.host.clone();
     let port = config.port;
     let state = AppState::new(config);
@@ -112,6 +113,9 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             println!("Mint 已启动");
             println!("用户名：{}", state.config.username);
+            if let Some(password) = generated_password {
+                println!("随机密码：{password}");
+            }
             println!("Web 访问地址：http://{address}/");
             println!("根目录：{}", state.config.root.display());
             println!("Cookie Secure：{}", state.config.cookie_secure);
